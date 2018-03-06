@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/jaykindell/tutorials/issues"
   },
-  "homepage": "https://github.com/jaykindell/tutorials#readme"
+  "homepage": "https://github.com/jaykindell/tutorials#readme",
+  "dependencies": {
+    "nexmo-conversation": "^0.1.19"
+  }
 }

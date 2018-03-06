@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <style>
@@ -13,6 +13,7 @@
       display: none;
     }
   </style>
+  <script src="./node_modules/nexmo-conversation/dist/conversationClient.js"></script>
 </head>
 
 <body>
@@ -34,9 +35,72 @@
   </section>
 
   <script>
-    // Your code will go here
+    const USER_JWT = 'YOUR USER JWT';
+    const YOUR_CONVERSATION_ID = 'YOUR CONVERSATION ID';
+    class ChatApp {
+      constructor() {
+        this.messageTextarea = document.getElementById('messageTextarea')
+        this.messageFeed = document.getElementById('messageFeed')
+        this.sendButton = document.getElementById('send')
+        this.loginForm = document.getElementById('login')
+        this.setupUserEvents()
+      }
+      errorLogger(error) {
+        console.log(error)
+      }
+      eventLogger(event) {
+        return () => {
+          console.log("'%s' event was sent", event)
+        }
+      }
+      authenticate() {
+        // Your authentication logic would go here.
+        return USER_JWT
+      }
+      setupConversationEvents(conversation) {
+        this.conversation = conversation
+        console.log('*** Conversation Retrieved', conversation)
+        console.log('*** Conversation Member', conversation.me)
+        // Bind to events on the conversation
+        conversation.on('text', (sender, message) => {
+          console.log('*** Message received', sender, message)
+          const date = new Date(Date.parse(message.timestamp))
+          const text = `${sender.name} @ ${date}: <b>${message.body.text}</b><br>`
+          this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
+        })
+      }
+      joinConversation(userToken) {
+        document.getElementById('messages').style.display = 'block'
+        this.loginForm.style.display = 'none'
+        new ConversationClient({
+          debug: false
+        })
+          .login(userToken)
+          .then(app => {
+            console.log('*** Logged into app', app)
+            return app.getConversation(YOUR_CONVERSATION_ID)
+          })
+          .then(this.setupConversationEvents.bind(this))
+          .catch(this.errorLogger)
+      }
+      setupUserEvents() {
+        this.sendButton.addEventListener('click', () => {
+          this.conversation.sendText(this.messageTextarea.value).then(() => {
+            this.eventLogger('text')()
+            this.messageTextarea.value = ''
+          }).catch(this.errorLogger)
+        })
+        this.loginForm.addEventListener('submit', (event) => {
+          event.preventDefault()
+          const userToken = this.authenticate()
+          if (userToken) {
+            this.joinConversation(userToken)
+          }
+        })
+      }
+    }
+    new ChatApp()
   </script>
-
 </body>
 
 </html>
