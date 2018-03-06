@@ -28,20 +28,19 @@
       display: none;
     }
   </style>
+    <section id="messages">
+      <button id="leave">Leave Conversation</button>
+      <h1>Messages</h1>
+  
+      <div id="messageFeed"></div>
+  
+      <textarea id="messageTextarea"></textarea>
+      <br>
+      <button id="send">Send</button>
+    </section>
   <section id="conversations">
     <h1>Conversations</h1>
   </section>
-
-  <section id="messages">
-    <h1>Messages</h1>
-
-    <div id="messageFeed"></div>
-
-    <textarea id="messageTextarea"></textarea>
-    <br>
-    <button id="send">Send</button>
-  </section>
-
   <script>
     const USER_JWT = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MjAzNTc3NDQsImp0aSI6ImNjNTk0OWQwLTIxNjQtMTFlOC1hZWU3LTkzYThlODE1M2NjMyIsInN1YiI6IkpheSIsImV4cCI6IjE1MjA0NDQxNDMiLCJhY2wiOnsicGF0aHMiOnsiL3YxL3Nlc3Npb25zLyoqIjp7fSwiL3YxL3VzZXJzLyoqIjp7fSwiL3YxL2NvbnZlcnNhdGlvbnMvKioiOnt9fX0sImFwcGxpY2F0aW9uX2lkIjoiMTdjNThhNDAtOTdlZC00NzEwLThjNjgtNTllNTU5NjcyM2NiIn0.IY6bXYun1Qn5PF2wr1Cn6VAyhd4TotUzWTqaliMBtoSLiBIgePS5eFHOB7pmo1rtE_2DoYZ5iCa-9R9V2i86f9Niwtu2YH4WxpzB2_L1OeFw_sEJQDNGM5EqkRp712d2vnolEaRLtLYKfoe3vJ68SVEe4eiF5ji3Dyc_D0tCZm2yj5ssf3K-4URZVGAx0ih6xpd2tOAH2QmqxRLJQpRrAsJ38x9BvqVs5zNrwdJpzbGfAgWCdczd4aCPwPbZ_Htfcs0AaTZZl2L7-mYv4Sqlz6dQ1oP1xGU7QzX8RxDOJ7qI2BFe4yn9VLbD40Mdx-3uTajt-8dj-X-fN95-8MOiHA';
     const SECOND_USER_JWT = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MjAzNTkzMzIsImp0aSI6IjdlZTI1ZTQwLTIxNjgtMTFlOC1iZTYyLTMzNzllMDJkMDhjNyIsInN1YiI6Im5pY2siLCJleHAiOiIxNTIwNDQ1NzMxIiwiYWNsIjp7InBhdGhzIjp7Ii92MS9zZXNzaW9ucy8qKiI6e30sIi92MS91c2Vycy8qKiI6e30sIi92MS9jb252ZXJzYXRpb25zLyoqIjp7fX19LCJhcHBsaWNhdGlvbl9pZCI6IjE3YzU4YTQwLTk3ZWQtNDcxMC04YzY4LTU5ZTU1OTY3MjNjYiJ9.VTgRvN3-iXbhZQYlKDEsBo5bwdoS97qb9ff9mxd1O-1KlSYtkBA94KxtWBO99aiRBpFFCEZZC3veUWSFP_mLLTiD4r8bnkKXvZnfibf9s64rUHn9nmOT6YRRG5-BgGrTbl_MkUHlot0TOZW6jxhfi3niIM1JcnuMHphnGZ48eQPSh9lXaagILwwP6js3w6Oo9C6c6LUi5MVkImMtdOMfUWkhrkL6FZ8UFHNn3J2kzx71gTnlj9YEF3KfzlClEYfq62pbAi8BYK8RcGKQkhlHpIlYaprF9LC8fQfkgoY9LWciqt8i7bkHEna9qDsW1R42D6L7gjWADg7uGin4COI1Iw';
@@ -53,6 +52,7 @@
         this.messageFeed = document.getElementById('messageFeed')
         this.sendButton = document.getElementById('send')
         this.loginForm = document.getElementById('login')
+        this.leaveButton = document.getElementById('leave')
         this.setupUserEvents()
       }
       errorLogger(error) {
@@ -67,6 +67,14 @@
         // Your authentication logic would go here.
         return username.toLowerCase() === "jay" ? USER_JWT : SECOND_USER_JWT;
       }
+      memberEventHandler(type) {
+        return (member, event) => {
+          const date = new Date(Date.parse(event.timestamp))
+          console.log(`*** ${member.user.name} ${type} the conversation`)
+          const text = `${member.user.name} @ ${date}: <b>${type} the conversation</b><br>`
+          this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
+        }
+      }
       setupConversationEvents(conversation) {
         this.conversationList.style.display = 'none'
         document.getElementById("messages").style.display = "block"
@@ -77,14 +85,48 @@
         conversation.on('text', (sender, message) => {
           console.log('*** Message received', sender, message)
           const date = new Date(Date.parse(message.timestamp))
-          const text = `${sender.name} @ ${date}: <b>${message.body.text}</b><br>`
+          const text = `${sender.user.name} @ ${date}: <b>${message.body.text}</b><br>`
           this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
+
+          if (sender.user.name !== this.conversation.me.name) {
+              message.seen().then(this.eventLogger('text:seen')).catch(this.errorLogger)
+          }
         })
-        conversation.on("member:joined", (member, event) => {
-          const date = new Date(Date.parse(event.timestamp))
-          console.log(`*** ${member.user.name} joined the conversation`)
-          const text = `${member.user.name} @ ${date}: <b>joined the conversation</b><br>`
-          this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
+        conversation.on("text:seen", (data, text) => console.log(`${data.name} saw text: ${text.body.text}`))
+        conversation.on("text:typing:off", data => console.log(`${data.name} stopped typing...`))
+        conversation.on("text:typing:on", data => console.log(`${data.name} started typing...`))
+        conversation.on("member:joined", this.memberEventHandler('joined'))
+        conversation.on("member:left", this.memberEventHandler('left'))
+        this.showConversationHistory(conversation)
+      }
+      showConversationHistory(conversation) {
+        conversation.getEvents().then((events) => {
+          var eventsHistory = ""
+          for (var i = Object.keys(events).length; i > 0; i--) {
+            const date = new Date(Date.parse(events[Object.keys(events)[i - 1]].timestamp))
+            if (conversation.members[events[Object.keys(events)[i - 1]].from]) {
+              switch (events[Object.keys(events)[i - 1]].type) {
+                case 'text':
+                  eventsHistory += `${conversation.members[events[Object.keys(events)[i - 1]].from].user.name} @ ${date}: <b>${events[Object.keys(events)[i - 1]].body.text}</b><br>`
+                  break;
+
+                case 'member:joined':
+                  eventsHistory += `${conversation.members[events[Object.keys(events)[i - 1]].from].user.name} @ ${date}: <b>joined the conversation</b><br>`
+                  break;
+                case 'member:left':
+                  eventsHistory += `${conversation.members[events[Object.keys(events)[i - 1]].from].user.name} @ ${date}: <b>left the conversation</b><br>`
+                  break;
+                case 'member:invited':
+                  eventsHistory += `${conversation.members[events[Object.keys(events)[i - 1]].from].user.name} @ ${date}: <b>invited to the conversation</b><br>`
+                  break;
+
+                default:
+                  eventsHistory += `${conversation.members[events[Object.keys(events)[i - 1]].from].user.name} @ ${date}: <b>unknown event</b><br>`
+              }
+            }
+          }
+
+          this.messageFeed.innerHTML = eventsHistory + this.messageFeed.innerHTML
         })
       }
       listConversations(userToken) {
@@ -152,6 +194,9 @@
           if (userToken) {
             this.listConversations(userToken)
           }
+        })
+        this.leaveButton.addEventListener('click', () => {
+          this.conversation.leave().then(this.eventLogger('member:left')).catch(this.errorLogger)
         })
       }
     }
