@@ -23,6 +23,14 @@
     <input type="text" name="username" value="">
     <input type="submit" value="Login" />
   </form>
+  <style>
+    #conversations {
+      display: none;
+    }
+  </style>
+  <section id="conversations">
+    <h1>Conversations</h1>
+  </section>
 
   <section id="messages">
     <h1>Messages</h1>
@@ -36,9 +44,11 @@
 
   <script>
     const USER_JWT = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MjAzNTc3NDQsImp0aSI6ImNjNTk0OWQwLTIxNjQtMTFlOC1hZWU3LTkzYThlODE1M2NjMyIsInN1YiI6IkpheSIsImV4cCI6IjE1MjA0NDQxNDMiLCJhY2wiOnsicGF0aHMiOnsiL3YxL3Nlc3Npb25zLyoqIjp7fSwiL3YxL3VzZXJzLyoqIjp7fSwiL3YxL2NvbnZlcnNhdGlvbnMvKioiOnt9fX0sImFwcGxpY2F0aW9uX2lkIjoiMTdjNThhNDAtOTdlZC00NzEwLThjNjgtNTllNTU5NjcyM2NiIn0.IY6bXYun1Qn5PF2wr1Cn6VAyhd4TotUzWTqaliMBtoSLiBIgePS5eFHOB7pmo1rtE_2DoYZ5iCa-9R9V2i86f9Niwtu2YH4WxpzB2_L1OeFw_sEJQDNGM5EqkRp712d2vnolEaRLtLYKfoe3vJ68SVEe4eiF5ji3Dyc_D0tCZm2yj5ssf3K-4URZVGAx0ih6xpd2tOAH2QmqxRLJQpRrAsJ38x9BvqVs5zNrwdJpzbGfAgWCdczd4aCPwPbZ_Htfcs0AaTZZl2L7-mYv4Sqlz6dQ1oP1xGU7QzX8RxDOJ7qI2BFe4yn9VLbD40Mdx-3uTajt-8dj-X-fN95-8MOiHA';
+    const SECOND_USER_JWT = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE1MjAzNTkzMzIsImp0aSI6IjdlZTI1ZTQwLTIxNjgtMTFlOC1iZTYyLTMzNzllMDJkMDhjNyIsInN1YiI6Im5pY2siLCJleHAiOiIxNTIwNDQ1NzMxIiwiYWNsIjp7InBhdGhzIjp7Ii92MS9zZXNzaW9ucy8qKiI6e30sIi92MS91c2Vycy8qKiI6e30sIi92MS9jb252ZXJzYXRpb25zLyoqIjp7fX19LCJhcHBsaWNhdGlvbl9pZCI6IjE3YzU4YTQwLTk3ZWQtNDcxMC04YzY4LTU5ZTU1OTY3MjNjYiJ9.VTgRvN3-iXbhZQYlKDEsBo5bwdoS97qb9ff9mxd1O-1KlSYtkBA94KxtWBO99aiRBpFFCEZZC3veUWSFP_mLLTiD4r8bnkKXvZnfibf9s64rUHn9nmOT6YRRG5-BgGrTbl_MkUHlot0TOZW6jxhfi3niIM1JcnuMHphnGZ48eQPSh9lXaagILwwP6js3w6Oo9C6c6LUi5MVkImMtdOMfUWkhrkL6FZ8UFHNn3J2kzx71gTnlj9YEF3KfzlClEYfq62pbAi8BYK8RcGKQkhlHpIlYaprF9LC8fQfkgoY9LWciqt8i7bkHEna9qDsW1R42D6L7gjWADg7uGin4COI1Iw';
     const YOUR_CONVERSATION_ID = 'CON-e20efd94-a6f4-4842-ba26-f05f7ff8314c';
     class ChatApp {
       constructor() {
+        this.conversationList = document.getElementById('conversations')
         this.messageTextarea = document.getElementById('messageTextarea')
         this.messageFeed = document.getElementById('messageFeed')
         this.sendButton = document.getElementById('send')
@@ -53,11 +63,13 @@
           console.log("'%s' event was sent", event)
         }
       }
-      authenticate() {
+      authenticate(username) {
         // Your authentication logic would go here.
-        return USER_JWT
+        return username.toLowerCase() === "jay" ? USER_JWT : SECOND_USER_JWT;
       }
       setupConversationEvents(conversation) {
+        this.conversationList.style.display = 'none'
+        document.getElementById("messages").style.display = "block"
         this.conversation = conversation
         console.log('*** Conversation Retrieved', conversation)
         console.log('*** Conversation Member', conversation.me)
@@ -68,20 +80,64 @@
           const text = `${sender.name} @ ${date}: <b>${message.body.text}</b><br>`
           this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
         })
+        conversation.on("member:joined", (member, event) => {
+          const date = new Date(Date.parse(event.timestamp))
+          console.log(`*** ${member.user.name} joined the conversation`)
+          const text = `${member.user.name} @ ${date}: <b>joined the conversation</b><br>`
+          this.messageFeed.innerHTML = text + this.messageFeed.innerHTML
+        })
       }
-      joinConversation(userToken) {
-        document.getElementById('messages').style.display = 'block'
-        this.loginForm.style.display = 'none'
+      listConversations(userToken) {
         new ConversationClient({
           debug: false
         })
           .login(userToken)
           .then(app => {
             console.log('*** Logged into app', app)
-            return app.getConversation(YOUR_CONVERSATION_ID)
+
+            app.on("member:invited", (member, event) => {
+              //identify the sender.
+              console.log("*** Invitation received:", event);
+
+              //accept an invitation.
+              app.getConversation(event.cid || event.body.cname)
+                .then((conversation) => {
+                  this.conversation = conversation
+                  conversation.join().then(() => {
+                    var conversationDictionary = {}
+                    conversationDictionary[this.conversation.id] = this.conversation
+                    this.updateConversationsList(conversationDictionary)
+                  }).catch(this.errorLogger)
+
+                })
+                .catch(this.errorLogger)
+            })
+            return app.getConversations()
           })
-          .then(this.setupConversationEvents.bind(this))
+          .then((conversations) => {
+            console.log('*** Retrieved conversations', conversations);
+
+            this.updateConversationsList(conversations)
+
+          })
           .catch(this.errorLogger)
+      }
+      updateConversationsList(conversations) {
+        let conversationsElement = document.createElement("ul");
+        for (let id in conversations) {
+          let conversationElement = document.createElement("li");
+          conversationElement.textContent = conversations[id].display_name;
+          conversationElement.addEventListener("click", () => this.setupConversationEvents(conversations[id]));
+          conversationsElement.appendChild(conversationElement);
+        }
+
+        if (!conversationsElement.childNodes.length) {
+          conversationsElement.textContent = "You are not a member of any conversations"
+        }
+
+        this.conversationList.appendChild(conversationsElement)
+        this.conversationList.style.display = 'block'
+        this.loginForm.style.display = 'none'
       }
       setupUserEvents() {
         this.sendButton.addEventListener('click', () => {
@@ -92,9 +148,9 @@
         })
         this.loginForm.addEventListener('submit', (event) => {
           event.preventDefault()
-          const userToken = this.authenticate()
+          const userToken = this.authenticate(this.loginForm.children.username.value)
           if (userToken) {
-            this.joinConversation(userToken)
+            this.listConversations(userToken)
           }
         })
       }
